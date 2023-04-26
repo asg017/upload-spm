@@ -155,7 +155,7 @@ function run() {
                         release_id,
                         name,
                         // @ts-ignore seems to accept a buffer just fine
-                        data: tar,
+                        data,
                     });
                     return {
                         os,
