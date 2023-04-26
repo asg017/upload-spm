@@ -33,17 +33,17 @@ interface UploadedPlatform {
   asset_md5: string;
 }
 function parsePlatformString(platform: string): [SpmOs, SpmCpu] {
-  return [SpmOs.Linux, SpmCpu.X86_64];
+  const [os, cpu] = platform.split("-");
+  return [os as SpmOs, cpu as SpmCpu];
 }
 
 function targz(files: { name: string; data: Buffer }[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    console.log("targz files: ", files[0].name, files[0]);
-
     // @ts-ignore
     const tarStream = pack();
 
     for (const file of files) {
+      core.debug(`entry ${file.name}`);
       tarStream.entry({ name: file.name }, file.data);
     }
 
@@ -73,6 +73,7 @@ interface Platform {
 
 function parsePlatformInput(input: string): Platform[] {
   const mapping = yaml.load(input);
+  core.debug(`parsePlatformInput: mapping=${JSON.stringify(mapping)}`);
   assertPlatformInputValid(mapping);
 
   return Object.keys(mapping).map(([platform, path]) => {
@@ -99,6 +100,7 @@ async function run(): Promise<void> {
     const platformsInput = core.getInput("platforms", {
       required: true,
     });
+    core.info("starting...");
     core.info(JSON.stringify({ PROJECT, platformsInput }));
     const platforms = parsePlatformInput(platformsInput);
     core.info(JSON.stringify({ platforms }));
