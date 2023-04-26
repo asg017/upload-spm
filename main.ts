@@ -101,6 +101,7 @@ async function run(): Promise<void> {
     });
     core.info(JSON.stringify({ PROJECT, platformsInput }));
     const platforms = parsePlatformInput(platformsInput);
+    core.info(JSON.stringify({ platforms }));
 
     const VERSION = process.env.GITHUB_REF_NAME!;
 
