@@ -15,6 +15,7 @@
   "dependencies": {
     "@actions/core": "^1.10.0",
     "@actions/github": "^5.1.1",
+    "@actions/glob": "^0.4.0",
     "js-yaml": "^4.1.0",
     "tar-fs": "^2.1.1"
   },

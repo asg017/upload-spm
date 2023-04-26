@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import { getOctokit } from "@actions/github";
+import * as glob from "@actions/glob";
 import * as yaml from "js-yaml";
 import { readFileSync } from "node:fs";
 import { createGzip } from "node:zlib";
@@ -68,20 +69,29 @@ function targz(files: { name: string; data: Buffer }[]): Promise<Buffer> {
 interface Platform {
   os: SpmOs;
   cpu: SpmCpu;
-  paths: string | string[];
+  paths: string[];
 }
 
-function parsePlatformInput(input: string): Platform[] {
+async function parsePlatformInput(input: string): Promise<Platform[]> {
   const mapping = yaml.load(input) as { [key: string]: string | string[] };
 
-  return Object.entries(mapping).map(([platform, paths]) => {
-    const [os, cpu] = parsePlatformString(platform);
-    return {
-      os,
-      cpu,
-      paths,
-    };
-  });
+  return await Promise.all(
+    Object.entries(mapping).map(async ([platform, rawPaths]) => {
+      const [os, cpu] = parsePlatformString(platform);
+      const paths: string[] = Array.isArray(rawPaths)
+        ? (
+            await Promise.all(
+              rawPaths.map((path) => glob.create(path).then((g) => g.glob()))
+            )
+          ).flatMap((d) => d)
+        : await glob.create(rawPaths).then((g) => g.glob());
+      return {
+        os,
+        cpu,
+        paths,
+      };
+    })
+  );
 }
 async function run(): Promise<void> {
   try {
@@ -94,7 +104,7 @@ async function run(): Promise<void> {
     });
     core.info("starting...");
     core.info(JSON.stringify({ PROJECT, platformsInput }));
-    const platforms = parsePlatformInput(platformsInput);
+    const platforms = await parsePlatformInput(platformsInput);
     core.info(JSON.stringify({ platforms }));
 
     const VERSION = process.env.GITHUB_REF_NAME!;
