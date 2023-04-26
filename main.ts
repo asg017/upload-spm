@@ -72,24 +72,16 @@ interface Platform {
 }
 
 function parsePlatformInput(input: string): Platform[] {
-  const mapping = yaml.load(input);
-  core.debug(`parsePlatformInput: mapping=${JSON.stringify(mapping)}`);
-  assertPlatformInputValid(mapping);
+  const mapping = yaml.load(input) as { [key: string]: string | string[] };
 
-  return Object.entries(mapping).map(([platform, path]) => {
+  return Object.entries(mapping).map(([platform, paths]) => {
     const [os, cpu] = parsePlatformString(platform);
     return {
       os,
       cpu,
-      paths: path,
+      paths,
     };
   });
-}
-function assertPlatformInputValid(
-  mapping: any
-): asserts mapping is { [key: string]: string } {
-  // TODO finish
-  mapping;
 }
 async function run(): Promise<void> {
   try {
