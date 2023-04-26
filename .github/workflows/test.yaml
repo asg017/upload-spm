@@ -1,0 +1,27 @@
+name: "test"
+on:
+  push:
+    branches:
+      - main
+env:
+  ARTIFACT-LINUX-X86_64-EXTENSION: sqlite-vss-linux-x86_64
+  ARTIFACT-MACOS-X86_64-EXTENSION: sqlite-vss-macos-x86_64
+  ARTIFACT-MACOS-AARCH64-EXTENSION: sqlite-vss-macos-aarch64
+  ARTIFACT-WINDOWS-X86_64-EXTENSION: sqlite-vss-windows-x86_64
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: "upload-spm"
+      - uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: sqlite-xyz
+          version: ${{ env.VERSION }}
+          platforms: |
+            linux-x86_64: ${{ env.ARTIFACT-LINUX-X86_64-EXTENSION }}/*.so
+            macos-x86_64: ${{ env.ARTIFACT-MACOS-X86_64-EXTENSION }}/*.dylib
+            macos-aarch64: ${{ env.ARTIFACT-MACOS-AARCH64-EXTENSION }}/*.dylib
+            windows-x86_64: ${{ env.ARTIFACT-WINDOWS-X86_64-EXTENSION }}/*.dll

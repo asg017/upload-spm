@@ -1,0 +1,16 @@
+name: "upload-spm"
+description: "Upload pre-compiled SQLite extension to a Github Release in an spm-compatible way"
+author: "Alex Garcia"
+inputs:
+  name:
+    required: true
+    description: "Name of your SPM project, ex 'sqlite-foo'"
+  github-token:
+    required: true
+    description: "Github API Token used to upload release assets, which is probably '${{ secrets.GITHUB_TOKEN }}' "
+  platforms:
+    required: true
+    description: "TODO"
+runs:
+  using: "node16"
+  main: "dist/index.js"
