@@ -151,7 +151,7 @@ async function run(): Promise<void> {
         release_id,
         name,
         // @ts-ignore seems to accept a buffer just fine
-        data: tar,
+        data,
       });
 
       return {
