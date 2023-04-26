@@ -7,7 +7,7 @@ inputs:
     description: "Name of your SPM project, ex 'sqlite-foo'"
   github-token:
     required: true
-    description: "Github API Token used to upload release assets, which is probably '${{ secrets.GITHUB_TOKEN }}' "
+    description: "Github API Token used to upload release assets, which is probably secrets.GITHUB_TOKEN "
   platforms:
     required: true
     description: "TODO"
