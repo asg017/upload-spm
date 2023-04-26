@@ -59,14 +59,15 @@ var SpmCpu;
     SpmCpu["Aarch64"] = "aarch64";
 })(SpmCpu || (SpmCpu = {}));
 function parsePlatformString(platform) {
-    return [SpmOs.Linux, SpmCpu.X86_64];
+    const [os, cpu] = platform.split("-");
+    return [os, cpu];
 }
 function targz(files) {
     return new Promise((resolve, reject) => {
-        console.log("targz files: ", files[0].name, files[0]);
         // @ts-ignore
         const tarStream = (0, tar_fs_1.pack)();
         for (const file of files) {
+            core.debug(`entry ${file.name}`);
             tarStream.entry({ name: file.name }, file.data);
         }
         tarStream.finalize();
@@ -86,6 +87,7 @@ function targz(files) {
 }
 function parsePlatformInput(input) {
     const mapping = yaml.load(input);
+    core.debug(`parsePlatformInput: mapping=${JSON.stringify(mapping)}`);
     assertPlatformInputValid(mapping);
     return Object.keys(mapping).map(([platform, path]) => {
         const [os, cpu] = parsePlatformString(platform);
@@ -108,8 +110,10 @@ function run() {
             const platformsInput = core.getInput("platforms", {
                 required: true,
             });
+            core.info("starting...");
             core.info(JSON.stringify({ PROJECT, platformsInput }));
             const platforms = parsePlatformInput(platformsInput);
+            core.info(JSON.stringify({ platforms }));
             const VERSION = process.env.GITHUB_REF_NAME;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
             const release = yield octokit.rest.repos.getReleaseByTag({
