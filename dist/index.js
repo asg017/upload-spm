@@ -105,21 +105,18 @@ function parsePlatformInput(input) {
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const octokit = (0, github_1.getOctokit)(core.getInput("github-token", { required: true }));
-            const PROJECT = core.getInput("name", { required: true });
-            const platformsInput = core.getInput("platforms", {
-                required: true,
-            });
-            core.info("starting...");
-            core.info(JSON.stringify({ PROJECT, platformsInput }));
-            const platforms = yield parsePlatformInput(platformsInput);
-            core.info(JSON.stringify({ platforms }));
             const VERSION = process.env.GITHUB_REF_NAME;
+            const PROJECT = core.getInput("name", { required: true });
+            const octokit = (0, github_1.getOctokit)(core.getInput("github-token", { required: true }));
+            const platforms = yield parsePlatformInput(core.getInput("platforms", {
+                required: true,
+            }));
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+            const tag = process.env.GITHUB_REF.replace("refs/tags/", "");
             const release = yield octokit.rest.repos.getReleaseByTag({
                 owner,
                 repo,
-                tag: process.env.GITHUB_REF.replace("refs/tags/", ""),
+                tag,
             });
             const release_id = release.data.id;
             function uploadPlatform(platform) {
@@ -149,24 +146,21 @@ function run() {
                     };
                 });
             }
+            const uploadedPlatforms = yield Promise.all(platforms.map((platform) => uploadPlatform(platform)));
             const spm_json = {
                 version: 0,
-                extensions: {
-                    ["TODO"]: {
-                        description: "",
-                        platforms: yield Promise.all(platforms.map((platform) => uploadPlatform(platform))),
-                    },
-                },
+                description: "",
+                platforms: uploadedPlatforms,
             };
-            yield octokit.rest.repos.uploadReleaseAsset({
+            const spmAsset = yield octokit.rest.repos.uploadReleaseAsset({
                 owner,
                 repo,
                 release_id,
                 name: "spm.json",
                 data: JSON.stringify(spm_json),
             });
-            core.debug(`TODO ...`);
-            core.setOutput("TODO", "TODO");
+            core.setOutput("number_platforms", uploadPlatform.length);
+            core.setOutput("spm_link", spmAsset.url);
         }
         catch (error) {
             if (error instanceof Error)
