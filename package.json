@@ -16,10 +16,12 @@
     "@actions/core": "^1.10.0",
     "@actions/github": "^5.1.1",
     "@actions/glob": "^0.4.0",
+    "adm-zip": "^0.5.10",
     "js-yaml": "^4.1.0",
     "tar-fs": "^2.1.1"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.0",
     "@types/js-yaml": "^4.0.5",
     "@types/node": "^18.16.0",
     "@types/tar-fs": "^2.0.1",

@@ -7,6 +7,8 @@ import { createGzip } from "node:zlib";
 import { createHash } from "node:crypto";
 import { basename } from "node:path";
 import { pack } from "tar-fs";
+import AdmZip from "adm-zip";
+
 enum SpmOs {
   Linux = "linux",
   Macos = "macos",
@@ -62,6 +64,13 @@ function targz(files: { name: string; data: Buffer }[]): Promise<Buffer> {
   });
 }
 
+function zip(files: { name: string; data: Buffer }[]): Buffer {
+  const zip = new AdmZip();
+  for (const file of files) {
+    zip.addFile(file.name, file.data);
+  }
+  return zip.toBuffer();
+}
 interface Platform {
   os: SpmOs;
   cpu: SpmCpu;
@@ -117,23 +126,30 @@ async function run(): Promise<void> {
       platform: Platform
     ): Promise<UploadedPlatform> {
       const { paths, os, cpu } = platform;
-
-      const tar = await targz(
-        (typeof paths === "string" ? [paths] : paths).map((path) => ({
+      const files = (typeof paths === "string" ? [paths] : paths).map(
+        (path) => ({
           name: basename(path),
           data: readFileSync(path),
-        }))
+        })
       );
 
-      const asset_name = `${PROJECT}-${VERSION}-${os}-${cpu}.tar.gz`;
-      const asset_md5 = createHash("md5").update(tar).digest("base64");
-      const asset_sha256 = createHash("sha256").update(tar).digest("hex");
+      let data, extension;
+      if (os === "windows") {
+        data = await targz(files);
+        extension = `zip`;
+      } else {
+        data = zip(files);
+        extension = `tar.gz`;
+      }
+      const name = `${PROJECT}-${VERSION}-${os}-${cpu}.${extension}`;
+      const asset_md5 = createHash("md5").update(data).digest("base64");
+      const asset_sha256 = createHash("sha256").update(data).digest("hex");
 
       await octokit.rest.repos.uploadReleaseAsset({
         owner,
         repo,
         release_id,
-        name: asset_name,
+        name,
         // @ts-ignore seems to accept a buffer just fine
         data: tar,
       });
@@ -141,7 +157,7 @@ async function run(): Promise<void> {
       return {
         os,
         cpu,
-        asset_name,
+        asset_name: name,
         asset_sha256,
         asset_md5,
       };
