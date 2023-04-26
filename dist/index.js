@@ -89,7 +89,7 @@ function parsePlatformInput(input) {
     const mapping = yaml.load(input);
     core.debug(`parsePlatformInput: mapping=${JSON.stringify(mapping)}`);
     assertPlatformInputValid(mapping);
-    return Object.keys(mapping).map(([platform, path]) => {
+    return Object.entries(mapping).map(([platform, path]) => {
         const [os, cpu] = parsePlatformString(platform);
         return {
             os,
