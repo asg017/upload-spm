@@ -114,9 +114,9 @@ async function run(): Promise<void> {
     const skipSpm = core.getInput("skip-spm", { required: false })
       ? core.getBooleanInput("skip-spm", { required: false })
       : false;
-    const assetNameTemplate =
-      core.getInput("asset-name-template", { required: false }) ??
-      "$PROJECT-$VERSION-loadable-$OS-$CPU";
+    const assetNameTemplate = core.getInput("asset-name-template", {
+      required: false,
+    });
 
     const [owner, repo] = process.env.GITHUB_REPOSITORY!.split("/");
     const tag = process.env.GITHUB_REF!.replace("refs/tags/", "");
