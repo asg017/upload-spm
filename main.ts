@@ -111,6 +111,10 @@ async function run(): Promise<void> {
         required: true,
       })
     );
+    const skipSpm = core.getBooleanInput("skip-spm", { required: false });
+    const assetNameTemplate =
+      core.getInput("asset-name-template", { required: false }) ??
+      "$PROJECT-$VERSION-loadable-$OS-$CPU";
 
     const [owner, repo] = process.env.GITHUB_REPOSITORY!.split("/");
     const tag = process.env.GITHUB_REF!.replace("refs/tags/", "");
@@ -141,7 +145,12 @@ async function run(): Promise<void> {
         data = zip(files);
         extension = `tar.gz`;
       }
-      const name = `${PROJECT}-${VERSION}-${os}-${cpu}.${extension}`;
+      const name =
+        assetNameTemplate
+          .replace("$PROJECT", PROJECT)
+          .replace("$VERSION", VERSION)
+          .replace("$OS", os)
+          .replace("$CPU", cpu) + `.${extension}`;
       const asset_md5 = createHash("md5").update(data).digest("base64");
       const asset_sha256 = createHash("sha256").update(data).digest("hex");
 
@@ -166,21 +175,25 @@ async function run(): Promise<void> {
     const uploadedPlatforms = await Promise.all(
       platforms.map((platform) => uploadPlatform(platform))
     );
-    const spm_json: SpmJson = {
-      version: 0,
-      description: "",
-      platforms: uploadedPlatforms,
-    };
+    if (!skipSpm) {
+      const spm_json: SpmJson = {
+        version: 0,
+        description: "",
+        platforms: uploadedPlatforms,
+      };
 
-    const spmAsset = await octokit.rest.repos.uploadReleaseAsset({
-      owner,
-      repo,
-      release_id,
-      name: "spm.json",
-      data: JSON.stringify(spm_json),
-    });
+      const spmAsset = await octokit.rest.repos.uploadReleaseAsset({
+        owner,
+        repo,
+        release_id,
+        name: "spm.json",
+        data: JSON.stringify(spm_json),
+      });
+      core.setOutput("spm_link", spmAsset.url);
+    }
+
     core.setOutput("number_platforms", uploadPlatform.length);
-    core.setOutput("spm_link", spmAsset.url);
+    core.setOutput("asset_checksums", `TODO`);
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
   }

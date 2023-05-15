@@ -114,6 +114,7 @@ function parsePlatformInput(input) {
     });
 }
 function run() {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const VERSION = process.env.GITHUB_REF_NAME;
@@ -122,6 +123,8 @@ function run() {
             const platforms = yield parsePlatformInput(core.getInput("platforms", {
                 required: true,
             }));
+            const skipSpm = core.getBooleanInput("skip-spm", { required: false });
+            const assetNameTemplate = (_a = core.getInput("asset-name-template", { required: false })) !== null && _a !== void 0 ? _a : "$PROJECT-$VERSION-loadable-$OS-$CPU";
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
             const tag = process.env.GITHUB_REF.replace("refs/tags/", "");
             const release = yield octokit.rest.repos.getReleaseByTag({
@@ -146,7 +149,11 @@ function run() {
                         data = zip(files);
                         extension = `tar.gz`;
                     }
-                    const name = `${PROJECT}-${VERSION}-${os}-${cpu}.${extension}`;
+                    const name = assetNameTemplate
+                        .replace("$PROJECT", PROJECT)
+                        .replace("$VERSION", VERSION)
+                        .replace("$OS", os)
+                        .replace("$CPU", cpu) + `.${extension}`;
                     const asset_md5 = (0, node_crypto_1.createHash)("md5").update(data).digest("base64");
                     const asset_sha256 = (0, node_crypto_1.createHash)("sha256").update(data).digest("hex");
                     yield octokit.rest.repos.uploadReleaseAsset({
@@ -167,20 +174,23 @@ function run() {
                 });
             }
             const uploadedPlatforms = yield Promise.all(platforms.map((platform) => uploadPlatform(platform)));
-            const spm_json = {
-                version: 0,
-                description: "",
-                platforms: uploadedPlatforms,
-            };
-            const spmAsset = yield octokit.rest.repos.uploadReleaseAsset({
-                owner,
-                repo,
-                release_id,
-                name: "spm.json",
-                data: JSON.stringify(spm_json),
-            });
+            if (!skipSpm) {
+                const spm_json = {
+                    version: 0,
+                    description: "",
+                    platforms: uploadedPlatforms,
+                };
+                const spmAsset = yield octokit.rest.repos.uploadReleaseAsset({
+                    owner,
+                    repo,
+                    release_id,
+                    name: "spm.json",
+                    data: JSON.stringify(spm_json),
+                });
+                core.setOutput("spm_link", spmAsset.url);
+            }
             core.setOutput("number_platforms", uploadPlatform.length);
-            core.setOutput("spm_link", spmAsset.url);
+            core.setOutput("asset_checksums", `TODO`);
         }
         catch (error) {
             if (error instanceof Error)
