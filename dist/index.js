@@ -123,7 +123,9 @@ function run() {
             const platforms = yield parsePlatformInput(core.getInput("platforms", {
                 required: true,
             }));
-            const skipSpm = core.getBooleanInput("skip-spm", { required: false });
+            const skipSpm = core.getInput("skip-spm")
+                ? core.getBooleanInput("skip-spm", { required: false })
+                : false;
             const assetNameTemplate = (_a = core.getInput("asset-name-template", { required: false })) !== null && _a !== void 0 ? _a : "$PROJECT-$VERSION-loadable-$OS-$CPU";
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
             const tag = process.env.GITHUB_REF.replace("refs/tags/", "");

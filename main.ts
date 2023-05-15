@@ -111,7 +111,9 @@ async function run(): Promise<void> {
         required: true,
       })
     );
-    const skipSpm = core.getBooleanInput("skip-spm", { required: false });
+    const skipSpm = core.getInput("skip-spm")
+      ? core.getBooleanInput("skip-spm", { required: false })
+      : false;
     const assetNameTemplate =
       core.getInput("asset-name-template", { required: false }) ??
       "$PROJECT-$VERSION-loadable-$OS-$CPU";
