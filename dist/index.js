@@ -123,7 +123,7 @@ function run() {
             const platforms = yield parsePlatformInput(core.getInput("platforms", {
                 required: true,
             }));
-            const skipSpm = core.getInput("skip-spm")
+            const skipSpm = core.getInput("skip-spm", { required: false })
                 ? core.getBooleanInput("skip-spm", { required: false })
                 : false;
             const assetNameTemplate = (_a = core.getInput("asset-name-template", { required: false })) !== null && _a !== void 0 ? _a : "$PROJECT-$VERSION-loadable-$OS-$CPU";

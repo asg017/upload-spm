@@ -111,7 +111,7 @@ async function run(): Promise<void> {
         required: true,
       })
     );
-    const skipSpm = core.getInput("skip-spm")
+    const skipSpm = core.getInput("skip-spm", { required: false })
       ? core.getBooleanInput("skip-spm", { required: false })
       : false;
     const assetNameTemplate =
