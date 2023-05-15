@@ -18,6 +18,9 @@ inputs:
   skip-spm:
     description: "TODO"
     required: false
+outputs:
+  asset-checksums:
+    description: SHA256 checksum values of all the uploaded Github Release assets.
 runs:
   using: "node16"
   main: "dist/index.js"

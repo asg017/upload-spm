@@ -128,6 +128,7 @@ function run() {
             const assetNameTemplate = core.getInput("asset-name-template", {
                 required: false,
             });
+            const outputAssetChecksums = [];
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
             const tag = process.env.GITHUB_REF.replace("refs/tags/", "");
             const release = yield octokit.rest.repos.getReleaseByTag({
@@ -177,23 +178,33 @@ function run() {
                 });
             }
             const uploadedPlatforms = yield Promise.all(platforms.map((platform) => uploadPlatform(platform)));
+            outputAssetChecksums.concat(uploadedPlatforms.map((d) => ({
+                name: d.asset_name,
+                checksum: d.asset_sha256,
+            })));
             if (!skipSpm) {
                 const spm_json = {
                     version: 0,
                     description: "",
                     platforms: uploadedPlatforms,
                 };
+                const name = "spm.json";
+                const data = JSON.stringify(spm_json);
                 const spmAsset = yield octokit.rest.repos.uploadReleaseAsset({
                     owner,
                     repo,
                     release_id,
-                    name: "spm.json",
-                    data: JSON.stringify(spm_json),
+                    name,
+                    data,
                 });
                 core.setOutput("spm_link", spmAsset.url);
+                outputAssetChecksums.push({
+                    name,
+                    checksum: (0, node_crypto_1.createHash)("sha256").update(data).digest("hex"),
+                });
             }
             core.setOutput("number_platforms", uploadPlatform.length);
-            core.setOutput("asset_checksums", `TODO`);
+            core.setOutput("asset-checksums", outputAssetChecksums.map((d) => `${d.name} ${d.checksum}`).join("\n"));
         }
         catch (error) {
             if (error instanceof Error)
