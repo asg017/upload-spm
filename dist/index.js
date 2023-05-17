@@ -178,7 +178,7 @@ function run() {
                 });
             }
             const uploadedPlatforms = yield Promise.all(platforms.map((platform) => uploadPlatform(platform)));
-            outputAssetChecksums.concat(uploadedPlatforms.map((d) => ({
+            outputAssetChecksums.push(...uploadedPlatforms.map((d) => ({
                 name: d.asset_name,
                 checksum: d.asset_sha256,
             })));
@@ -190,6 +190,7 @@ function run() {
                 };
                 const name = "spm.json";
                 const data = JSON.stringify(spm_json);
+                const checksum = (0, node_crypto_1.createHash)("sha256").update(data).digest("hex");
                 const spmAsset = yield octokit.rest.repos.uploadReleaseAsset({
                     owner,
                     repo,
@@ -200,10 +201,10 @@ function run() {
                 core.setOutput("spm_link", spmAsset.url);
                 outputAssetChecksums.push({
                     name,
-                    checksum: (0, node_crypto_1.createHash)("sha256").update(data).digest("hex"),
+                    checksum,
                 });
             }
-            core.setOutput("number_platforms", uploadPlatform.length);
+            core.setOutput("number_platforms", uploadedPlatforms.length);
             core.setOutput("asset-checksums", outputAssetChecksums.map((d) => `${d.name} ${d.checksum}`).join("\n"));
         }
         catch (error) {
