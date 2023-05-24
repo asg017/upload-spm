@@ -146,11 +146,11 @@ function run() {
                     }));
                     let data, extension;
                     if (os === "windows") {
-                        data = yield targz(files);
+                        data = zip(files);
                         extension = `zip`;
                     }
                     else {
-                        data = zip(files);
+                        data = yield targz(files);
                         extension = `tar.gz`;
                     }
                     const name = assetNameTemplate

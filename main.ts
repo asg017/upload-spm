@@ -143,10 +143,10 @@ async function run(): Promise<void> {
 
       let data, extension;
       if (os === "windows") {
-        data = await targz(files);
+        data = zip(files);
         extension = `zip`;
       } else {
-        data = zip(files);
+        data = await targz(files);
         extension = `tar.gz`;
       }
       const name =
