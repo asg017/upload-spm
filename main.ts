@@ -21,7 +21,8 @@ enum SpmCpu {
 interface SpmJson {
   version: number;
   description: string;
-  platforms: UploadedPlatform[];
+  loadable: UploadedPlatform[];
+  static?: UploadedPlatform[];
 }
 
 interface UploadedPlatform {
@@ -132,7 +133,7 @@ async function run(): Promise<void> {
 
     async function uploadPlatform(
       platform: Platform
-    ): Promise<UploadedPlatform> {
+    ): Promise<{ loadable: UploadedPlatform; static?: UploadedPlatform }> {
       const { paths, os, cpu } = platform;
       const files = (typeof paths === "string" ? [paths] : paths).map(
         (path) => ({
@@ -140,56 +141,122 @@ async function run(): Promise<void> {
           data: readFileSync(path),
         })
       );
+      const loadableFiles = files.filter((d) =>
+        /\.(dylib|dll|so)$/.test(d.name)
+      );
+      const staticFiles = files.filter((d) => /\.(a|h)$/.test(d.name));
 
-      let data, extension;
+      let loadableData: Buffer | undefined;
+      let staticData: Buffer | undefined;
+      let extension: string;
       if (os === "windows") {
-        data = zip(files);
+        loadableData = zip(loadableFiles);
+        if (staticFiles.length > 0) {
+          staticData = zip(staticFiles);
+        }
         extension = `zip`;
       } else {
-        data = await targz(files);
+        loadableData = await targz(loadableFiles);
+        if (staticFiles.length > 0) {
+          staticData = await targz(staticFiles);
+        }
         extension = `tar.gz`;
       }
-      const name =
+      const loadableAssetMd5 = createHash("md5")
+        .update(loadableData)
+        .digest("base64");
+      const loadableAssetSha256 = createHash("sha256")
+        .update(loadableData)
+        .digest("hex");
+      const loadableAssetName =
         assetNameTemplate
           .replace("$PROJECT", PROJECT)
           .replace("$VERSION", VERSION)
+          .replace("$TYPE", "loadable")
           .replace("$OS", os)
           .replace("$CPU", cpu) + `.${extension}`;
-      const asset_md5 = createHash("md5").update(data).digest("base64");
-      const asset_sha256 = createHash("sha256").update(data).digest("hex");
+
+      const loadable = {
+        os,
+        cpu,
+        asset_name: loadableAssetName,
+        asset_md5: loadableAssetMd5,
+        asset_sha256: loadableAssetSha256,
+      };
 
       await octokit.rest.repos.uploadReleaseAsset({
         owner,
         repo,
         release_id,
-        name,
+        name: loadableAssetName,
         // @ts-ignore seems to accept a buffer just fine
-        data,
+        data: loadableData,
       });
 
+      let static_;
+      if (staticData !== undefined) {
+        const staticAssetMd5 = createHash("md5")
+          .update(staticData)
+          .digest("base64");
+        const staticAssetSha256 = createHash("sha256")
+          .update(loadableData)
+          .digest("hex");
+        const staticAssetName =
+          assetNameTemplate
+            .replace("$PROJECT", PROJECT)
+            .replace("$VERSION", VERSION)
+            .replace("$TYPE", "static")
+            .replace("$OS", os)
+            .replace("$CPU", cpu) + `.${extension}`;
+        static_ = {
+          os,
+          cpu,
+          asset_name: staticAssetName,
+          asset_md5: staticAssetMd5,
+          asset_sha256: staticAssetSha256,
+        };
+        await octokit.rest.repos.uploadReleaseAsset({
+          owner,
+          repo,
+          release_id,
+          name: staticAssetName,
+          // @ts-ignore seems to accept a buffer just fine
+          data: staticData,
+        });
+      }
+
       return {
-        os,
-        cpu,
-        asset_name: name,
-        asset_sha256,
-        asset_md5,
+        loadable,
+        static: static_,
       };
     }
 
     const uploadedPlatforms = await Promise.all(
       platforms.map((platform) => uploadPlatform(platform))
     );
-    outputAssetChecksums.push(
-      ...uploadedPlatforms.map((d) => ({
-        name: d.asset_name,
-        checksum: d.asset_sha256,
-      }))
-    );
+    for (const uploadPlatform of uploadedPlatforms) {
+      outputAssetChecksums.push({
+        name: uploadPlatform.loadable.asset_name,
+        checksum: uploadPlatform.loadable.asset_sha256,
+      });
+      if (uploadPlatform.static) {
+        outputAssetChecksums.push({
+          name: uploadPlatform.static.asset_name,
+          checksum: uploadPlatform.static.asset_sha256,
+        });
+      }
+    }
+
     if (!skipSpm) {
+      const loadable = uploadedPlatforms.map((d) => d.loadable);
+      const static_ = uploadedPlatforms
+        .filter((d) => d.static !== undefined)
+        .map((d) => d.static!);
       const spm_json: SpmJson = {
         version: 0,
         description: "",
-        platforms: uploadedPlatforms,
+        loadable,
+        static: static_.length > 0 ? static_ : undefined,
       };
       const name = "spm.json";
       const data = JSON.stringify(spm_json);
@@ -213,7 +280,7 @@ async function run(): Promise<void> {
     core.setOutput("number_platforms", uploadedPlatforms.length);
     core.setOutput(
       "asset-checksums",
-      outputAssetChecksums.map((d) => `${d.name} ${d.checksum}`).join("\n")
+      outputAssetChecksums.map((d) => `${d.checksum} ${d.name}`).join("\n")
     );
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);

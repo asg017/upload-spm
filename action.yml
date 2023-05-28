@@ -14,7 +14,7 @@ inputs:
   asset-name-template:
     description: "TODO"
     required: false
-    default: "$PROJECT-$VERSION-loadable-$OS-$CPU"
+    default: "$PROJECT-$VERSION-$TYPE-$OS-$CPU"
   skip-spm:
     description: "TODO"
     required: false
