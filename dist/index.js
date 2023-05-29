@@ -196,7 +196,7 @@ function run() {
                             .update(staticData)
                             .digest("base64");
                         const staticAssetSha256 = (0, node_crypto_1.createHash)("sha256")
-                            .update(loadableData)
+                            .update(staticData)
                             .digest("hex");
                         const staticAssetName = assetNameTemplate
                             .replace("$PROJECT", PROJECT)

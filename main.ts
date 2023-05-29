@@ -199,7 +199,7 @@ async function run(): Promise<void> {
           .update(staticData)
           .digest("base64");
         const staticAssetSha256 = createHash("sha256")
-          .update(loadableData)
+          .update(staticData)
           .digest("hex");
         const staticAssetName =
           assetNameTemplate
