@@ -21,16 +21,20 @@ enum SpmCpu {
 interface SpmJson {
   version: number;
   description: string;
-  loadable: UploadedPlatform[];
-  static?: UploadedPlatform[];
+  loadable: PlatformAsset[];
+  static?: PlatformAsset[];
+}
+
+interface PlatformAsset {
+  os: SpmOs;
+  cpu: SpmCpu;
+  url: string;
+  checksum_sha256: string;
 }
 
 interface UploadedPlatform {
-  os: SpmOs;
-  cpu: SpmCpu;
   asset_name: string;
-  asset_sha256: string;
-  asset_md5: string;
+  platform_asset: PlatformAsset;
 }
 function parsePlatformString(platform: string): [SpmOs, SpmCpu] {
   const [os, cpu] = platform.split("-");
@@ -162,9 +166,6 @@ async function run(): Promise<void> {
         }
         extension = `tar.gz`;
       }
-      const loadableAssetMd5 = createHash("md5")
-        .update(loadableData)
-        .digest("base64");
       const loadableAssetSha256 = createHash("sha256")
         .update(loadableData)
         .digest("hex");
@@ -176,12 +177,15 @@ async function run(): Promise<void> {
           .replace("$OS", os)
           .replace("$CPU", cpu) + `.${extension}`;
 
-      const loadable = {
-        os,
-        cpu,
+      const loadable: UploadedPlatform = {
         asset_name: loadableAssetName,
-        asset_md5: loadableAssetMd5,
-        asset_sha256: loadableAssetSha256,
+        platform_asset: {
+          os,
+          cpu,
+          url: `https://github.com/${owner}/${repo}/releases/download/${VERSION}/${loadableAssetName}`,
+
+          checksum_sha256: loadableAssetSha256,
+        },
       };
 
       await octokit.rest.repos.uploadReleaseAsset({
@@ -195,9 +199,6 @@ async function run(): Promise<void> {
 
       let static_;
       if (staticData !== undefined) {
-        const staticAssetMd5 = createHash("md5")
-          .update(staticData)
-          .digest("base64");
         const staticAssetSha256 = createHash("sha256")
           .update(staticData)
           .digest("hex");
@@ -209,11 +210,13 @@ async function run(): Promise<void> {
             .replace("$OS", os)
             .replace("$CPU", cpu) + `.${extension}`;
         static_ = {
-          os,
-          cpu,
           asset_name: staticAssetName,
-          asset_md5: staticAssetMd5,
-          asset_sha256: staticAssetSha256,
+          platform_asset: {
+            os,
+            cpu,
+            url: `https://github.com/${owner}/${repo}/releases/download/${VERSION}/${staticAssetName}`,
+            checksum_sha256: staticAssetSha256,
+          },
         };
         await octokit.rest.repos.uploadReleaseAsset({
           owner,
@@ -237,12 +240,12 @@ async function run(): Promise<void> {
     for (const uploadPlatform of uploadedPlatforms) {
       outputAssetChecksums.push({
         name: uploadPlatform.loadable.asset_name,
-        checksum: uploadPlatform.loadable.asset_sha256,
+        checksum: uploadPlatform.loadable.platform_asset.checksum_sha256,
       });
       if (uploadPlatform.static) {
         outputAssetChecksums.push({
           name: uploadPlatform.static.asset_name,
-          checksum: uploadPlatform.static.asset_sha256,
+          checksum: uploadPlatform.static.platform_asset.checksum_sha256,
         });
       }
     }
@@ -255,8 +258,13 @@ async function run(): Promise<void> {
       const spm_json: SpmJson = {
         version: 0,
         description: "",
-        loadable,
-        static: static_.length > 0 ? static_ : undefined,
+        loadable: loadable.map(
+          (uploadedPlatform) => uploadedPlatform.platform_asset
+        ),
+        static:
+          static_.length > 0
+            ? static_.map((uploadedPlatform) => uploadedPlatform.platform_asset)
+            : undefined,
       };
       const name = "spm.json";
       const data = JSON.stringify(spm_json);

@@ -163,9 +163,6 @@ function run() {
                         }
                         extension = `tar.gz`;
                     }
-                    const loadableAssetMd5 = (0, node_crypto_1.createHash)("md5")
-                        .update(loadableData)
-                        .digest("base64");
                     const loadableAssetSha256 = (0, node_crypto_1.createHash)("sha256")
                         .update(loadableData)
                         .digest("hex");
@@ -176,11 +173,13 @@ function run() {
                         .replace("$OS", os)
                         .replace("$CPU", cpu) + `.${extension}`;
                     const loadable = {
-                        os,
-                        cpu,
                         asset_name: loadableAssetName,
-                        asset_md5: loadableAssetMd5,
-                        asset_sha256: loadableAssetSha256,
+                        platform_asset: {
+                            os,
+                            cpu,
+                            url: `https://github.com/${owner}/${repo}/releases/download/${VERSION}/${loadableAssetName}`,
+                            checksum_sha256: loadableAssetSha256,
+                        },
                     };
                     yield octokit.rest.repos.uploadReleaseAsset({
                         owner,
@@ -192,9 +191,6 @@ function run() {
                     });
                     let static_;
                     if (staticData !== undefined) {
-                        const staticAssetMd5 = (0, node_crypto_1.createHash)("md5")
-                            .update(staticData)
-                            .digest("base64");
                         const staticAssetSha256 = (0, node_crypto_1.createHash)("sha256")
                             .update(staticData)
                             .digest("hex");
@@ -205,11 +201,13 @@ function run() {
                             .replace("$OS", os)
                             .replace("$CPU", cpu) + `.${extension}`;
                         static_ = {
-                            os,
-                            cpu,
                             asset_name: staticAssetName,
-                            asset_md5: staticAssetMd5,
-                            asset_sha256: staticAssetSha256,
+                            platform_asset: {
+                                os,
+                                cpu,
+                                url: `https://github.com/${owner}/${repo}/releases/download/${VERSION}/${staticAssetName}`,
+                                checksum_sha256: staticAssetSha256,
+                            },
                         };
                         yield octokit.rest.repos.uploadReleaseAsset({
                             owner,
@@ -230,12 +228,12 @@ function run() {
             for (const uploadPlatform of uploadedPlatforms) {
                 outputAssetChecksums.push({
                     name: uploadPlatform.loadable.asset_name,
-                    checksum: uploadPlatform.loadable.asset_sha256,
+                    checksum: uploadPlatform.loadable.platform_asset.checksum_sha256,
                 });
                 if (uploadPlatform.static) {
                     outputAssetChecksums.push({
                         name: uploadPlatform.static.asset_name,
-                        checksum: uploadPlatform.static.asset_sha256,
+                        checksum: uploadPlatform.static.platform_asset.checksum_sha256,
                     });
                 }
             }
@@ -247,8 +245,10 @@ function run() {
                 const spm_json = {
                     version: 0,
                     description: "",
-                    loadable,
-                    static: static_.length > 0 ? static_ : undefined,
+                    loadable: loadable.map((uploadedPlatform) => uploadedPlatform.platform_asset),
+                    static: static_.length > 0
+                        ? static_.map((uploadedPlatform) => uploadedPlatform.platform_asset)
+                        : undefined,
                 };
                 const name = "spm.json";
                 const data = JSON.stringify(spm_json);
